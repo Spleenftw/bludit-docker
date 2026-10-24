@@ -1,0 +1,40 @@
+name: build
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+env:
+  BLUDIT_VERSION: "3.22.0"
+  IMAGE: ghcr.io/spleenftw/bludit
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: date
+        run: echo "d=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          pull: true
+          no-cache: ${{ github.event_name == 'schedule' }}
+          build-args: BLUDIT_VERSION=${{ env.BLUDIT_VERSION }}
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ env.BLUDIT_VERSION }}
+            ${{ env.IMAGE }}:${{ env.BLUDIT_VERSION }}-${{ steps.date.outputs.d }}
